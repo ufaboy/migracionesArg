@@ -51,10 +51,20 @@ button {
   border: 0;
   border-radius: 8px;
   cursor: pointer;
-  transition: background .15s;
+  transition: background .15s, color .15s, border-color .15s;
 }
 button:hover:not(:disabled) { background: var(--primary-hover); }
 button:disabled { opacity: .6; cursor: not-allowed; }
+button.secondary {
+  margin-top: 8px;
+  background: #fff;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+button.secondary:hover:not(:disabled) {
+  background: var(--primary);
+  color: #fff;
+}
 .msg { margin-top: 12px; font-size: 14px; }
 .msg.error { color: var(--error); background: var(--error-bg); padding: 10px 12px; border-radius: 8px; }
 .msg.info { color: var(--muted); }

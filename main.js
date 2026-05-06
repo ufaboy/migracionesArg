@@ -1,5 +1,7 @@
 const STORAGE_KEY = 'migraciones_form_v1';
 const API_ENDPOINT = '/api/consulta';
+const OFFICIAL_URL =
+  'https://www.migraciones.gob.ar/accesible/consultaTramitePrecaria/ConsultaUnificada.php';
 
 const byId = (id) => document.getElementById(id);
 
@@ -7,6 +9,7 @@ const formElement = byId('form');
 const fileNumberInput = byId('nro_expediente');
 const birthdateInput = byId('birthdate');
 const submitButton = byId('submitBtn');
+const openOfficialButton = byId('openOfficialBtn');
 const messageElement = byId('message');
 const resultContainer = byId('result');
 const resultBodyElement = byId('resultBody');
@@ -47,6 +50,29 @@ function restoreFormFromStorage() {
 function setMessage(text, messageType) {
   messageElement.textContent = text || '';
   messageElement.className = 'msg' + (messageType ? ' ' + messageType : '');
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (_) {}
+  }
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return ok;
+  } catch (_) {
+    return false;
+  }
 }
 
 function renderObjectAsDefinitionList(data) {
@@ -221,6 +247,25 @@ function renderApiResponse(responseData) {
 }
 
 formElement.addEventListener('input', saveFormToStorage);
+
+openOfficialButton.addEventListener('click', async () => {
+  const fileNumber = fileNumberInput.value.trim();
+  if (!fileNumber) {
+    setMessage('Enter a file number first to copy it.', 'error');
+    fileNumberInput.focus();
+    return;
+  }
+
+  const copied = await copyTextToClipboard(fileNumber);
+  setMessage(
+    copied
+      ? 'File number copied. Opening official site…'
+      : 'Could not copy automatically. Opening official site…',
+    'info',
+  );
+
+  window.open(OFFICIAL_URL, '_blank', 'noopener,noreferrer');
+});
 
 formElement.addEventListener('submit', async (event) => {
   event.preventDefault();
