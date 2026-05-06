@@ -1,11 +1,15 @@
-const CACHE = 'migraciones-v2';
+const CACHE = 'migraciones-v3';
 const ASSETS = [
   '/',
   '/index.html',
   '/styles.css',
   '/manifest.webmanifest',
-  '/icon.svg',
-  '/icon-maskable.svg',
+  '/favicon.svg',
+  '/favicon.ico',
+  '/favicon-96x96.png',
+  '/apple-touch-icon.png',
+  '/web-app-manifest-192x192.png',
+  '/web-app-manifest-512x512.png',
 ];
 
 self.addEventListener('install', (event) => {

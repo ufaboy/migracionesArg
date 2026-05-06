@@ -7,8 +7,10 @@
 <meta name="description" content="Check the status of an Argentine immigration procedure">
 <meta name="theme-color" content="#2563eb">
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="icon" type="image/svg+xml" href="/icon.svg">
-<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Migraciones">
@@ -26,12 +28,8 @@
         </div>
 
         <div class="row">
-          <label>Date of birth (DD / MM / YYYY)</label>
-          <div class="date-grid">
-            <input id="day"   type="number" min="1"    max="31"   placeholder="DD">
-            <input id="month" type="number" min="1"    max="12"   placeholder="MM">
-            <input id="year"  type="number" min="1900" max="2099" placeholder="YYYY">
-          </div>
+          <label for="birthdate">Date of birth</label>
+          <input id="birthdate" name="birthdate" type="date" min="1900-01-01" max="2099-12-31">
         </div>
 
         <button id="submitBtn" type="submit">Check status</button>

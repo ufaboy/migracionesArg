@@ -5,9 +5,7 @@ const byId = (id) => document.getElementById(id);
 
 const formElement = byId('form');
 const fileNumberInput = byId('nro_expediente');
-const dayInput = byId('day');
-const monthInput = byId('month');
-const yearInput = byId('year');
+const birthdateInput = byId('birthdate');
 const submitButton = byId('submitBtn');
 const messageElement = byId('message');
 const resultContainer = byId('result');
@@ -16,9 +14,7 @@ const resultBodyElement = byId('resultBody');
 function getFormValues() {
   return {
     nro_expediente: fileNumberInput.value.trim(),
-    day: dayInput.value.trim(),
-    month: monthInput.value.trim(),
-    year: yearInput.value.trim(),
+    birthdate: birthdateInput.value,
   };
 }
 
@@ -28,20 +24,24 @@ function saveFormToStorage() {
   } catch (_) {}
 }
 
+function padTwoDigits(value) {
+  return String(value).padStart(2, '0');
+}
+
 function restoreFormFromStorage() {
   try {
     const storedJson = localStorage.getItem(STORAGE_KEY);
     if (!storedJson) return;
     const formValues = JSON.parse(storedJson) || {};
     if (formValues.nro_expediente) fileNumberInput.value = formValues.nro_expediente;
-    if (formValues.day) dayInput.value = formValues.day;
-    if (formValues.month) monthInput.value = formValues.month;
-    if (formValues.year) yearInput.value = formValues.year;
-  } catch (_) {}
-}
 
-function padTwoDigits(value) {
-  return String(value).padStart(2, '0');
+    if (formValues.birthdate) {
+      birthdateInput.value = formValues.birthdate;
+    } else if (formValues.year && formValues.month && formValues.day) {
+      birthdateInput.value =
+        formValues.year + '-' + padTwoDigits(formValues.month) + '-' + padTwoDigits(formValues.day);
+    }
+  } catch (_) {}
 }
 
 function setMessage(text, messageType) {
@@ -227,23 +227,24 @@ formElement.addEventListener('submit', async (event) => {
   saveFormToStorage();
 
   const formValues = getFormValues();
-  if (!formValues.nro_expediente || !formValues.day || !formValues.month || !formValues.year) {
-    setMessage('Please fill in all 4 fields.', 'error');
+  if (!formValues.nro_expediente || !formValues.birthdate) {
+    setMessage('Please fill in all fields.', 'error');
     return;
   }
 
-  const day = parseInt(formValues.day, 10);
-  const month = parseInt(formValues.month, 10);
-  const year = parseInt(formValues.year, 10);
-  const isDayValid = day >= 1 && day <= 31;
-  const isMonthValid = month >= 1 && month <= 12;
-  const isYearValid = year >= 1900 && year <= 2099;
-  if (!isDayValid || !isMonthValid || !isYearValid) {
+  const birthdateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(formValues.birthdate);
+  if (!birthdateMatch) {
+    setMessage('Invalid date.', 'error');
+    return;
+  }
+  const [, yearStr, monthStr, dayStr] = birthdateMatch;
+  const year = parseInt(yearStr, 10);
+  if (year < 1900 || year > 2099) {
     setMessage('Invalid date.', 'error');
     return;
   }
 
-  const fecha_nac = padTwoDigits(day) + '/' + padTwoDigits(month) + '/' + year;
+  const fecha_nac = dayStr + '/' + monthStr + '/' + yearStr;
 
   const requestBody = new FormData();
   requestBody.append(
