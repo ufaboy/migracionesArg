@@ -1,7 +1,8 @@
-const CACHE = 'migraciones-v1';
+const CACHE = 'migraciones-v2';
 const ASSETS = [
   '/',
   '/index.html',
+  '/styles.css',
   '/manifest.webmanifest',
   '/icon.svg',
   '/icon-maskable.svg',
