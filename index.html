@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Migraciones AR - Procedure Status</title>
+<meta name="description" content="Check the status of an Argentine immigration procedure">
+<meta name="theme-color" content="#2563eb">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<link rel="apple-touch-icon" href="/icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Migraciones">
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --border: #e2e5ea;
+    --text: #1c1f24;
+    --muted: #6b7280;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --error: #b91c1c;
+    --error-bg: #fee2e2;
+    --ok: #065f46;
+    --row-alt: #f9fafb;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 32px 16px;
+  }
+  .container { max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 16px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  form .row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  form .row label { font-size: 13px; color: var(--muted); }
+  .date-grid { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 8px; }
+  input {
+    font: inherit;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+    width: 100%;
+  }
+  input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+  input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+  button {
+    width: 100%;
+    padding: 11px 16px;
+    font: inherit;
+    font-weight: 600;
+    color: #fff;
+    background: var(--primary);
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  button:hover:not(:disabled) { background: var(--primary-hover); }
+  button:disabled { opacity: .6; cursor: not-allowed; }
+  .msg { margin-top: 12px; font-size: 14px; }
+  .msg.error { color: var(--error); background: var(--error-bg); padding: 10px 12px; border-radius: 8px; }
+  .msg.info { color: var(--muted); }
+
+  #result { display: none; }
+  #result.visible { display: block; }
+  #result h2 { font-size: 16px; margin: 0 0 12px; }
+  #result h3 { font-size: 14px; margin: 16px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+  dl dt { color: var(--muted); font-weight: 500; }
+  dl dd { margin: 0; word-break: break-word; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { background: var(--row-alt); font-weight: 600; }
+  tr:nth-child(even) td { background: var(--row-alt); }
+  .empty { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Procedure Status Check</h1>
+
+    <div class="card">
+      <form id="form" novalidate>
+        <div class="row">
+          <label for="nro_expediente">File number</label>
+          <input id="nro_expediente" name="nro_expediente" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 1095942025">
+        </div>
+
+        <div class="row">
+          <label>Date of birth (DD / MM / YYYY)</label>
+          <div class="date-grid">
+            <input id="day"   type="number" min="1"    max="31"   placeholder="DD">
+            <input id="month" type="number" min="1"    max="12"   placeholder="MM">
+            <input id="year"  type="number" min="1900" max="2099" placeholder="YYYY">
+          </div>
+        </div>
+
+        <button id="submitBtn" type="submit">Check status</button>
+        <div id="message" class="msg"></div>
+      </form>
+    </div>
+
+    <div id="result" class="card">
+      <h2>Result</h2>
+      <div id="resultBody"></div>
+    </div>
+  </div>
+
+<script>
+(function () {
+  const KEY = 'migraciones_form_v1';
+  const API = '/api/consulta';
+
+  const $ = (id) => document.getElementById(id);
+  const form       = $('form');
+  const nroEl      = $('nro_expediente');
+  const dayEl      = $('day');
+  const monthEl    = $('month');
+  const yearEl     = $('year');
+  const submitBtn  = $('submitBtn');
+  const messageEl  = $('message');
+  const resultEl   = $('result');
+  const resultBody = $('resultBody');
+
+  function getValues() {
+    return {
+      nro_expediente: nroEl.value.trim(),
+      day:   dayEl.value.trim(),
+      month: monthEl.value.trim(),
+      year:  yearEl.value.trim(),
+    };
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(getValues())); } catch (_) {}
+  }
+
+  function restore() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return;
+      const v = JSON.parse(raw) || {};
+      if (v.nro_expediente) nroEl.value   = v.nro_expediente;
+      if (v.day)            dayEl.value   = v.day;
+      if (v.month)          monthEl.value = v.month;
+      if (v.year)           yearEl.value  = v.year;
+    } catch (_) {}
+  }
+
+  form.addEventListener('input', save);
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+
+  function setMessage(text, type) {
+    messageEl.textContent = text || '';
+    messageEl.className = 'msg' + (type ? ' ' + type : '');
+  }
+
+  function renderDl(obj) {
+    const dl = document.createElement('dl');
+    const keys = Object.keys(obj || {});
+    if (keys.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'empty';
+      p.textContent = 'No data';
+      return p;
+    }
+    for (const k of keys) {
+      const dt = document.createElement('dt');
+      dt.textContent = k;
+      const dd = document.createElement('dd');
+      const val = obj[k];
+      dd.textContent = (val === null || val === undefined) ? '' :
+                       (typeof val === 'object' ? JSON.stringify(val) : String(val));
+      dl.appendChild(dt);
+      dl.appendChild(dd);
+    }
+    return dl;
+  }
+
+  function renderTable(rows) {
+    if (!Array.isArray(rows) || rows.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'empty';
+      p.textContent = 'No results';
+      return p;
+    }
+    const cols = [];
+    const seen = new Set();
+    for (const r of rows) {
+      if (r && typeof r === 'object') {
+        for (const k of Object.keys(r)) {
+          if (!seen.has(k)) { seen.add(k); cols.push(k); }
+        }
+      }
+    }
+    if (cols.length === 0) {
+      const pre = document.createElement('pre');
+      pre.textContent = JSON.stringify(rows, null, 2);
+      return pre;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'table-wrap';
+    const table = document.createElement('table');
+
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    for (const c of cols) {
+      const th = document.createElement('th');
+      th.textContent = c;
+      trh.appendChild(th);
+    }
+    thead.appendChild(trh);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    for (const r of rows) {
+      const tr = document.createElement('tr');
+      for (const c of cols) {
+        const td = document.createElement('td');
+        const v = r ? r[c] : undefined;
+        td.textContent = (v === null || v === undefined) ? '' :
+                         (typeof v === 'object' ? JSON.stringify(v) : String(v));
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    return wrap;
+  }
+
+  function renderResult(json) {
+    resultBody.innerHTML = '';
+
+    const h3a = document.createElement('h3');
+    h3a.textContent = 'datos_persona';
+    resultBody.appendChild(h3a);
+    resultBody.appendChild(renderDl(json && json.datos_persona));
+
+    const h3b = document.createElement('h3');
+    h3b.textContent = 'data';
+    resultBody.appendChild(h3b);
+    resultBody.appendChild(renderTable(json && json.data));
+
+    resultEl.classList.add('visible');
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    save();
+
+    const v = getValues();
+    if (!v.nro_expediente || !v.day || !v.month || !v.year) {
+      setMessage('Please fill in all 4 fields.', 'error');
+      return;
+    }
+    const day = parseInt(v.day, 10);
+    const month = parseInt(v.month, 10);
+    const year = parseInt(v.year, 10);
+    if (!(day >= 1 && day <= 31) || !(month >= 1 && month <= 12) || !(year >= 1900 && year <= 2099)) {
+      setMessage('Invalid date.', 'error');
+      return;
+    }
+
+    const fecha_nac = pad2(day) + '/' + pad2(month) + '/' + year;
+
+    const fd = new FormData();
+    fd.append('nro_expediente', v.nro_expediente);
+    fd.append('fecha_nac', fecha_nac);
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Checking…';
+    setMessage('Sending request…', 'info');
+    resultEl.classList.remove('visible');
+
+    try {
+      const res = await fetch(API, { method: 'POST', body: fd });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const text = await res.text();
+      let json;
+      try { json = JSON.parse(text); }
+      catch (_) { throw new Error('Response is not JSON: ' + text.slice(0, 200)); }
+      setMessage('', '');
+      renderResult(json);
+    } catch (err) {
+      setMessage('Error: ' + (err && err.message ? err.message : err), 'error');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Check status';
+    }
+  });
+
+  restore();
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+})();
+</script>
+</body>
+</html>
