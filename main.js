@@ -214,6 +214,10 @@ function renderApiResponse(responseData) {
   }
 
   resultContainer.classList.add('visible');
+
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+  });
 }
 
 formElement.addEventListener('input', saveFormToStorage);
